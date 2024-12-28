@@ -89,7 +89,7 @@ public class Scanner {
 
             // double character lexemes, which uses match to do 1 step look ahead
             case '!': addToken(match('=') ? BANG_EQUAL : BANG); break;
-            case '=': addToken(match('=') ? EQUAL_EQUAL : BANG); break;
+            case '=': addToken(match('=') ? EQUAL_EQUAL : EQUAL); break;
             case '<': addToken(match('=') ? LESS_EQUAL : BANG); break;
             case '>': addToken(match('=') ? GREATER_EQUAL : BANG); break;
             case '/':

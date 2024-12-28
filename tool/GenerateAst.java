@@ -10,16 +10,20 @@ public class GenerateAst {
         // the outputDir is the directory to place the new file in,
         // the base name is the name of the file,
         // and the third argument is the list of CFG productions
-        defineAst(outputDir, "Expr", Arrays.asList(
+        defineAst(outputDir, "Expr1", Arrays.asList(
             "Literal  : Object value",
                  "Unary    : Token operator, Expr right",
                  "Binary   : Expr left, Token operator, Expr right",
-                 "Grouping : Expr expression"
+                 "Grouping : Expr expression",
+                 "Variable : Token name",
+                 "Assign   : Token name, Expr value"
         ));
 
-        defineAst(outputDir, "Stmt", Arrays.asList(
+        defineAst(outputDir, "Stmt1", Arrays.asList(
             "Expression : Expr expression",
-                 "Print      : Expr expression"
+                 "Block      : List<Stmt> statements",
+                 "Print      : Expr expression",
+                 "Var        : Token name, Expr initializer"
         ));
 
     }

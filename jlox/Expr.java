@@ -63,6 +63,9 @@ abstract class Expr {
         R visitUnaryExpr(Unary expr);
         R visitBinaryExpr(Binary expr);
         R visitGroupingExpr(Grouping expr);
+        R visitVariableExpr(Variable expr);
+        R visitAssignExpr(Assign expr);
+        
     }
 
     // the Expr subclass Literal, which has only one field, its value, 
@@ -118,6 +121,32 @@ abstract class Expr {
         @Override
         <R> R accept(Visitor<R> visitor) {
             return visitor.visitGroupingExpr(this);
+        }
+    }
+
+    static class Variable extends Expr {
+        final Token name;
+        Variable(Token name) {
+            this.name = name;
+        }
+        @Override
+        <R> R accept(Visitor<R> visitor) {
+            return visitor.visitVariableExpr(this);
+        }
+    }
+
+    static class Assign extends Expr {
+        // token needed to reference the LHS of the assignment
+        // to change the stored value
+        final Token name;
+        final Expr value;
+        Assign(Token name, Expr value) {
+            this.name = name;
+            this.value = value;
+        }
+        @Override
+        <R> R accept(Visitor<R> visitor) {
+            return visitor.visitAssignExpr(this);
         }
     }
 

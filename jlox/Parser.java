@@ -2,6 +2,12 @@ package jlox;
 
 import java.util.ArrayList;
 import java.util.List;
+
+// here the parser handles syntax - putting things together according
+// to the CFGs defined, and pushes to the interpreter the 
+// list of statements/expressions/declarations to be handled
+// or evaluated (the interpreter handles the semantics)
+
 import static jlox.TokenType.*;
 
 public class Parser {
@@ -33,7 +39,28 @@ public class Parser {
     // and so on
 
     private Expr expression() {
-        return equality();
+        return assignment();
+    }
+    private Expr assignment() {
+        // the tricky part for this, is that we can't treat the expression for 
+        // assignment the same as a part of the previous expressions, because
+        // we can't "evaluate" the LHS, the variable, since it isn't a real
+        // expression but a reference that we can use to get a handle on a spot in memory 
+        Expr expr = equality();
+        // above, this finds out what the LHS expression is
+        // unless it is a variable, as checked below, do not 
+        // return the assign expression, so a + b = c is not allowed
+        if (match(EQUAL)) {
+            Token equals = previous();
+            Expr value = assignment();
+            if (expr instanceof Expr.Variable) {
+                Token name = ((Expr.Variable) expr).name;
+                return new Expr.Assign(name, value);
+            }
+
+            error(equals,"Invalid assignment target.");
+        }
+        return expr;
     }
     private Expr equality() {
         Expr expr = comparison();
@@ -58,6 +85,7 @@ public class Parser {
         while (match(MINUS,PLUS)) {
             Token operator = previous();
             Expr right = factor();
+            // recursively construct new binary expression
             expr = new Expr.Binary(expr,operator,right);
         }
         return expr;
@@ -88,13 +116,20 @@ public class Parser {
             return new Expr.Literal(previous().literal);
         }
 
+        if (match(IDENTIFIER)) {
+            // here we use previous because when match() returns true,
+            // it advances the current pointer forwards
+            return new Expr.Variable(previous());
+            // and a variable is also a form of a statement
+        }
+
         if (match(LEFT_PAREN)) {
             Expr expr = expression();
             consume(RIGHT_PAREN, "Expect ')' after expression.");
             return new Expr.Grouping(expr);
         }
 
-        throw error(peek(), "Expect expression.");
+        throw error(peek(), "Expect expression."); // currently any errors will break down here
     }
 
     private boolean match(TokenType...types) {
@@ -125,7 +160,8 @@ public class Parser {
     private Token previous() {
         return tokens.get(current-1);
     }
-
+    
+    // consumes an expected token - otherwise returns the error message
     private Token consume(TokenType type, String message) {
         if (check(type)) return advance();
         // throw error(peek(),message);
@@ -153,16 +189,40 @@ public class Parser {
     List<Stmt> parse() {
         List<Stmt> statements = new ArrayList<>();
         while (!isAtEnd()) {
-            statements.add(statement());
+            statements.add(declaration());
         }
         return statements;
     }
 
+    // parse triggers at the top of the recursive descent
+    // hierarchy, which fires everything else - this order makes
+    // sense since every expression is some type of statement
+    private Stmt declaration() {
+        try {
+            if (match(VAR)) {
+                return varDeclaration();
+            }
+            return statement();
+        } catch (ParseError error) {
+            synchronise();
+            return null;
+        }
+    }
     private Stmt statement() {
         if (match(PRINT)) return printStatement();
+        if (match(LEFT_BRACE)) return new Stmt.Block(block());
         return expressionStatement();
     }
-    
+
+    private Stmt varDeclaration() {
+        Token name = consume(IDENTIFIER, "Expect variable name.");
+        Expr initialiser = null;
+        if (match(EQUAL)) {
+            initialiser = expression();
+        }
+        consume(SEMICOLON, "Expect ';' after variable declaration.");
+        return new Stmt.Var(name,initialiser);
+    }
     //collapse to the expression productions
     private Stmt printStatement() {
         Expr value = expression();
@@ -174,26 +234,36 @@ public class Parser {
         consume(SEMICOLON, "expect ';' after expression.");
         return new Stmt.Expression(expr);
     }
+    private List<Stmt> block() {
+        List<Stmt> statements = new ArrayList<>();
 
-    // private void synchronise() {
-    //     advance();
-    //     while (!isAtEnd()) {
-    //         if (previous().type == SEMICOLON) {
-    //             return;
-    //         }
-    //         switch (peek().type) {
-    //             case CLASS:
-    //             case FUN:
-    //             case VAR:
-    //             case FOR:
-    //             case IF:
-    //             case WHILE:
-    //             case PRINT:
-    //             case RETURN:
-    //                 return;
-    //         }
-    //         advance();
-    //     }
-    // }
+        while (!check(RIGHT_BRACE) && !isAtEnd()) {
+            statements.add(declaration());
+        }
+        consume(RIGHT_BRACE, "Expect '}' after block.");
+        return statements;
+    }
+    // finishes parsing the single line until it meets with a semicolon
+    private void synchronise() {
+        advance();
+        while (!isAtEnd()) {
+            if (previous().type == SEMICOLON) {
+                return;
+            }
+            switch (peek().type) {
+                case CLASS:
+                case FUN:
+                case VAR:
+                case FOR:
+                case IF:
+                case WHILE:
+                case PRINT:
+                case RETURN:
+                default:
+                    advance();
+                    return;
+            }
+        }
+    }
 }
 

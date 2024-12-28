@@ -1,22 +1,19 @@
 package jlox;
 
-/*
- * for now the statement class is really just an extension of Expr.java,
- * since the two kinds of statements defined, expression statements (>>> 3+4;)
- * and print statements (print(3+4);) are objects which just hold the expression
- * object, which means that 
- */
+import java.util.*;
 
 abstract class Stmt {
 
     interface Visitor<R> {
         R visitExpressionStmt(Expression stmt);
         R visitPrintStmt(Print stmt);
+        R visitVarStmt(Var stmt);
+        R visitBlockStmt(Block stmt);
+
     }
 
     abstract <R> R accept(Visitor<R> visitor);
 
-    // the kind of statement that's really an expression
     static class Expression extends Stmt {
         final Expr expression;
         Expression(Expr expression) {
@@ -28,7 +25,17 @@ abstract class Stmt {
         }
     }
 
-    // the print statement
+    static class Block extends Stmt {
+        final List<Stmt> statements;
+        Block(List<Stmt> statements) {
+            this.statements = statements;
+        }
+        @Override
+        <R> R accept(Visitor<R> visitor) {
+            return visitor.visitBlockStmt(this);
+        }
+    }
+
     static class Print extends Stmt {
         final Expr expression;
         Print(Expr expression) {
@@ -37,6 +44,19 @@ abstract class Stmt {
         @Override
         <R> R accept(Visitor<R> visitor) {
             return visitor.visitPrintStmt(this);
+        }
+    }
+
+    static class Var extends Stmt {
+        final Token name;
+        final Expr initializer;
+        Var(Token name, Expr initializer) {
+            this.name = name;
+            this.initializer = initializer;
+        }
+        @Override
+        <R> R accept(Visitor<R> visitor) {
+            return visitor.visitVarStmt(this);
         }
     }
 

@@ -2,7 +2,14 @@ package jlox;
 
 import java.util.List;
 
+/*
+ * here is where the visitor methods full get defined, as how the interpreter will
+ * process each different kind of input expression
+ */
+
 public class Interpreter implements Expr.Visitor<Object>,Stmt.Visitor<Void> {
+
+    private Environment environment = new Environment();
 
     @Override
     public Object visitLiteralExpr(Expr.Literal expr) {
@@ -32,7 +39,6 @@ public class Interpreter implements Expr.Visitor<Object>,Stmt.Visitor<Void> {
         Object left = evaluate(expr.left);
         Object right = evaluate(expr.right);
 
-        System.out.println(expr.operator);
         switch (expr.operator.type) {
             case MINUS:
                 checkNumberOperands(expr.operator, left,right);
@@ -66,18 +72,6 @@ public class Interpreter implements Expr.Visitor<Object>,Stmt.Visitor<Void> {
                 return isEqual(left,right);
             case BANG_EQUAL:
                 return !isEqual(left,right);
-            case AND:
-                if (left instanceof Boolean && right instanceof Boolean) {
-                    return ((Boolean) left && (Boolean) right);
-                } else {
-                    throw new RuntimeError(expr.operator, "Boolean operators require Boolean values.");
-                }
-            case OR:
-            if (left instanceof Boolean && right instanceof Boolean) {
-                return ((Boolean) left || (Boolean) right);
-            } else {
-                throw new RuntimeError(expr.operator, "Boolean operators require Boolean values.");
-            }
             default:
                 break;
         }
@@ -85,24 +79,75 @@ public class Interpreter implements Expr.Visitor<Object>,Stmt.Visitor<Void> {
         return null;
     }
     @Override
+    public Object visitVariableExpr(Expr.Variable expr) {
+        return environment.get(expr.name) != null ? environment.get(expr.name) : new RuntimeError(expr.name, "Can't reference uninitialised variable");
+    }
+    @Override
     public Void visitExpressionStmt(Stmt.Expression stmt) {
         // just run the expression evaluation!
-        evaluate(stmt.expression);
+        System.out.println(stringify(evaluate(stmt.expression)));
         return null;
     }
     @Override
     public Void visitPrintStmt(Stmt.Print stmt) {
         // passes onto evaluating the expression within the print(), which is sout-ed
         Object value = evaluate(stmt.expression);
+        // currently a problem - variables after assignment
+        // are printed as their memory locations
+        if (value.getClass() == Expr.Variable.class) {
+            System.out.println(stringify(environment.get(((Expr.Variable) value).name)));
+        }
         System.out.println(stringify(value));
         return null;
     }
+    @Override
+    public Void visitVarStmt(Stmt.Var stmt) {
+        // whether there is an initialiser or not, there is still a value
+        // if there is an initialiser, then the value is set to
+        // what the initialiser expression evaluates to, otherwise
+        // it stays as null
+        Object value = null;
+        if (stmt.initializer != null) {
+            value = evaluate(stmt.initializer);
+        }
+        environment.define(stmt.name.lexeme, value);
+        return null;
+    }
+    @Override
+    public Object visitAssignExpr(Expr.Assign expr) {
+        environment.assign(expr.name,expr.value);
+        return expr.value;
+    }
+    @Override
+    public Void visitBlockStmt(Stmt.Block stmt) {
+        executeBlock(stmt.statements, new Environment(environment));
+        return null;
+    }
+
 
     // the part where the operations that define and evaluate each type of EXPRESSION is ran
     // note that this is for expressions only - statements have the EXECUTE method, which
     // might pass onto the evaluate function
     private Object evaluate(Expr expr) {
         return expr.accept(this);
+    }
+
+    private void executeBlock(List<Stmt> statements, Environment environment) {
+        // saves the current environment, to
+        Environment previous = this.environment;
+        try {
+            // replace it with an empty new one, initialised
+            // with the constructor which places the current one 
+            // as a field
+            this.environment = environment;
+    
+            for (Stmt statement : statements) {
+                execute(statement);
+            }
+        } finally {
+            // reset the current environment, ie, unsave the block one
+            this.environment = previous;
+        }
     }
     
     private void checkNumberOperand(Token operator, Object operand) {
@@ -137,6 +182,7 @@ public class Interpreter implements Expr.Visitor<Object>,Stmt.Visitor<Void> {
     }
 
     // the method to activate the running of each statement
+    // statement analogue to evaluate() for expressions
     private void execute(Stmt stmt) {
         stmt.accept(this);
     }
