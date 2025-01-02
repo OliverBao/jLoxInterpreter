@@ -2,27 +2,47 @@ package test;
 
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 
 public class Test {
 
-    public int findTargetSumWays(int[] nums, int target) {
-        if (Arrays.stream(nums).sum() < Math.abs(target)) {
-            return 0;
+    public int findTheCity(int n, int[][] edges, int distanceThreshold) {
+        int[][] edgeArr = new int[n][n];
+        for (int i = 0; i < edgeArr.length; i++) {
+            for (int j = 0; j < edgeArr.length; j++) {
+                edgeArr[i][j] = (i == j) ? 0 : Integer.MAX_VALUE;
+            }
         }
-        HashMap<Integer,Integer> map = new HashMap<>();
-        map.put(0, 1);
-        for (int i = 0; i < nums.length; i++) {
-            HashMap<Integer,Integer> temp = new HashMap<>();
-            for (int k : map.keySet()) {
-                if (temp.get(k+nums[i]) != null) {
-                    temp.put(k+nums[i], temp.get(k+nums[i])+map.get(k));
-                } else {
-                    temp.put(k+nums[i], map.get(k));
+        for (int[] e : edges) {
+            edgeArr[e[0]][e[1]] = e[2];
+            edgeArr[e[1]][e[0]] = e[2];
+        }
+        for (int k = 0; k < edgeArr.length; k++) {
+            for (int i = 0; i < edgeArr.length; i++) {
+                for (int j = 0; j < edgeArr.length; j++) {
+                    edgeArr[i][j] = Math.min(edgeArr[i][j],edgeArr[i][k] + edgeArr[k][j]);
                 }
             }
-            map = temp;
         }
-        return map.get(target);
+        int out = n;
+        int outMin = n;
+        for (int i = 0; i < edgeArr.length; i++) {
+            int c = 0;
+            for (int j = 0; j < edgeArr.length; j++) {
+                if (edgeArr[i][j] <= distanceThreshold) {
+                    c += 1;
+                }
+            }
+            if (c <= outMin) {
+                out = i;
+                outMin = c;
+            }
+        }
+        return out;
+    }
+
+    public static void main(String[] args) {
+        System.out.println((int) Math.pow(10, 9)+7 == 1000000007);
     }
 
 }

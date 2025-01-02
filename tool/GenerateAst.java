@@ -10,20 +10,26 @@ public class GenerateAst {
         // the outputDir is the directory to place the new file in,
         // the base name is the name of the file,
         // and the third argument is the list of CFG productions
-        defineAst(outputDir, "Expr1", Arrays.asList(
-            "Literal  : Object value",
-                 "Unary    : Token operator, Expr right",
-                 "Binary   : Expr left, Token operator, Expr right",
-                 "Grouping : Expr expression",
-                 "Variable : Token name",
-                 "Assign   : Token name, Expr value"
-        ));
+        // defineAst(outputDir, "Expr1", Arrays.asList(
+        //     "Literal  : Object value",
+        //          "Unary    : Token operator, Expr right",
+        //          "Binary   : Expr left, Token operator, Expr right",
+        //          "Grouping : Expr expression",
+        //          "Variable : Token name",
+        //          "Assign   : Token name, Expr value",
+        //          "Logical  : Expr left, Token operator, Expr right",
+        //          "Call     : Expr callee, Token paren, List<Expr> arguments"
+        // ));
 
         defineAst(outputDir, "Stmt1", Arrays.asList(
             "Expression : Expr expression",
+                 "Function   : Token name, List<Token> params," + " List<Stmt> body",
                  "Block      : List<Stmt> statements",
                  "Print      : Expr expression",
-                 "Var        : Token name, Expr initializer"
+                 "Var        : Token name, Expr initializer",
+                 "If         : Expr condition, Stmt thenBranch," + " Stmt elseBranch",
+                 "While      : Expr condition, Stmt body",
+                 "Return     : Token keyword, Expr value" // keeps the token so that error reporting returns the right line, and so that cutting off the control flow can return the value
         ));
 
     }

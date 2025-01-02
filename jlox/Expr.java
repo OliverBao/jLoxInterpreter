@@ -1,5 +1,7 @@
 package jlox;
 
+import java.util.List;
+
 // implements the context free grammar model of Lox,
 // using an abstract class which different types of expressions,
 // specifically Literals, Unary, Binary and Grouping, implement
@@ -65,7 +67,9 @@ abstract class Expr {
         R visitGroupingExpr(Grouping expr);
         R visitVariableExpr(Variable expr);
         R visitAssignExpr(Assign expr);
-        
+        R visitLogicalExpr(Logical expr);
+        R visitCallExpr(Call expr);
+
     }
 
     // the Expr subclass Literal, which has only one field, its value, 
@@ -149,5 +153,36 @@ abstract class Expr {
             return visitor.visitAssignExpr(this);
         }
     }
+
+    static class Logical extends Expr {
+        final Expr left;
+        final Token operator;
+        final Expr right;
+        Logical(Expr left, Token operator, Expr right) {
+            this.left = left;
+            this.operator = operator;
+            this.right = right;
+        }
+        @Override
+        <R> R accept(Visitor<R> visitor) {
+            return visitor.visitLogicalExpr(this);
+        }
+    }
+
+    static class Call extends Expr {
+        final Expr callee;
+        final Token paren;
+        final List<Expr> arguments;
+        Call(Expr callee, Token paren, List<Expr> arguments) {
+            this.callee = callee;
+            this.paren = paren;
+            this.arguments = arguments;
+        }
+        @Override
+        <R> R accept(Visitor<R> visitor) {
+            return visitor.visitCallExpr(this);
+        }
+    }
+
 
 }

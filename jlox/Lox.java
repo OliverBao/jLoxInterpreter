@@ -21,6 +21,11 @@ public class Lox {
         hadRuntimeError = true;
     }
 
+    public interface LoxCallable {
+        Object call(Interpreter interpreter, List<Object> arguments);
+        int arity();
+    }
+
     /*
      * the main function, for running the interpreter
      */
