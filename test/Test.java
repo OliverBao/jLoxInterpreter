@@ -1,9 +1,5 @@
 package test;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-
 public class Test {
 
     public int findTheCity(int n, int[][] edges, int distanceThreshold) {
