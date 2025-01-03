@@ -36,25 +36,36 @@ public class Interpreter implements Expr.Visitor<Object>,Stmt.Visitor<Void> {
         });
     }
 
+    /*
+     * implement the visit methods, which are actually interpreting and making meaning
+     * out of the parsed expressions and statements
+     */
     
-
     @Override
     public Object visitLiteralExpr(Expr.Literal expr) {
+        // just return the value of the token that is carried in the expression
         return expr.value;
     }
     @Override
     public Object visitGroupingExpr(Expr.Grouping expr) {
+        // undo the grouping syntax and return the evaluated result of the 
+        // expression inside the grouping
         return evaluate(expr.expression);
     }
     @Override
     public Object visitUnaryExpr(Expr.Unary expr) {
+        // first evaluate the right side of unary expression
         Object right = evaluate(expr.right);
 
+        // then based on the case of what the unary operator is, either
         switch (expr.operator.type) {
             case MINUS:
+            // return the negative version of the value, only after doing a 
+            // type check - since lox is dynamically typed
             checkNumberOperand(expr.operator, right);
                 return -(double)right;
             case BANG:
+            // otherwise just return the truthy value
                 return !isTruthy(right);
             default:
                 break;
@@ -63,11 +74,14 @@ public class Interpreter implements Expr.Visitor<Object>,Stmt.Visitor<Void> {
     }
     @Override
     public Object visitBinaryExpr(Expr.Binary expr) {
+        // evaluate the left and right before examining what the operator is
+        // and hence what to do with the two left and right values
         Object left = evaluate(expr.left);
         Object right = evaluate(expr.right);
 
         switch (expr.operator.type) {
             case MINUS:
+            // dynamic type checking
                 checkNumberOperands(expr.operator, left,right);
                 return (double) left - (double) right;
             case SLASH:
@@ -80,6 +94,7 @@ public class Interpreter implements Expr.Visitor<Object>,Stmt.Visitor<Void> {
                 if (left instanceof Double && right instanceof Double) {
                     return (double) left + (double) right;
                 } else if (left instanceof String && right instanceof String) {
+                    // extra operation support for string concatenation
                     return (String) left + (String) right;
                 }
                 throw new RuntimeError(expr.operator, "Operands must be two numbers or two strings.");
@@ -107,6 +122,11 @@ public class Interpreter implements Expr.Visitor<Object>,Stmt.Visitor<Void> {
     }
     @Override
     public Object visitVariableExpr(Expr.Variable expr) {
+        // give back the environment object - if the variable is undefined, then
+        // error handling is passed onto the environment object, otherwise, if 
+        // the variable being called is not initialised, return the error report,
+        // otherwise return the variable value as per the scoping hierarchy implemented
+        // by the environment
         return environment.get(expr.name) != null ? environment.get(expr.name) : new RuntimeError(expr.name, "Can't reference uninitialised variable");
     }
     @Override
@@ -167,12 +187,42 @@ public class Interpreter implements Expr.Visitor<Object>,Stmt.Visitor<Void> {
         return expr.value;
     }
     @Override
+    public Object visitCallExpr(Expr.Call expr) {
+        // evalute the callee - checks on later with !(callee instanceof LoxCallable) ->
+        Object callee = evaluate(expr.callee);
+
+        // initialise the list of arguments
+        List<Object> arguments = new ArrayList<>();
+        for (Expr argument : expr.arguments) {
+            arguments.add(evaluate(argument));
+        }
+
+        // checks if the callee has already been declared as a function, otherwise the call cannot
+        // go ahead
+        if (!(callee instanceof LoxCallable)) {
+            throw new RuntimeError(expr.paren, "Can only call functions and classes.");
+        }
+
+        // converts the callee to the LoxCallable class and then runs the .call() method there
+        LoxCallable function = (LoxCallable) callee;
+
+        // not before checking arity
+        if (arguments.size() != function.arity()) {
+            throw new RuntimeError(expr.paren, "Expeted " + function.arity() + " arguments but got " + arguments.size() + ".");
+        }
+        return function.call(this,arguments);
+    }
+    @Override
     public Void visitBlockStmt(Stmt.Block stmt) {
+        // use the specialised executeBlock method, which executes the 
+        // list of statements in block within the new environment
         executeBlock(stmt.statements, new Environment(environment));
         return null;
     }
     @Override
     public Void visitIfStmt(Stmt.If stmt) {
+        // actually quite simple - literally implemented by how
+        // java runs the condition control flow
         if (isTruthy(evaluate(stmt.condition))) {
             execute(stmt.thenBranch);
         } else if (stmt.elseBranch != null) {
@@ -183,40 +233,32 @@ public class Interpreter implements Expr.Visitor<Object>,Stmt.Visitor<Void> {
     @Override
     public Object visitLogicalExpr(Expr.Logical expr) {
         Object left = evaluate(expr.left);
+        // check the left side if the right side needs to be evaluated
         if (expr.operator.type == TokenType.OR) {
             if (isTruthy(left)) return left;
         } else {
             if (!isTruthy(left)) return left;
         }
+        // if needed, then give the right side
         return evaluate(expr.right);
     }
     @Override
     public Void visitWhileStmt(Stmt.While stmt) {
+        // literally, uses the java while loop to run the statements within the block
         while (isTruthy(evaluate(stmt.condition))) {
             execute(stmt.body);
         }
         return null;
     }
     @Override
-    public Object visitCallExpr(Expr.Call expr) {
-        Object callee = evaluate(expr.callee);
-        List<Object> arguments = new ArrayList<>();
-        for (Expr argument : expr.arguments) {
-            arguments.add(evaluate(argument));
-        }
-        if (!(callee instanceof LoxCallable)) {
-            throw new RuntimeError(expr.paren, "Can only call functions and classes.");
-        }
-        LoxCallable function = (LoxCallable) callee;
-        if (arguments.size() != function.arity()) {
-            throw new RuntimeError(expr.paren, "Expeted " + function.arity() + " arguments but got " + arguments.size() + ".");
-        }
-        return function.call(this,arguments);
-    }
-    @Override
     public Void visitFunctionStmt(Stmt.Function stmt) {
-        // use a self defined object to represent the function
-        // at runtime
+        // use a self defined object to represent the function at runtime
+        // this is NOT visitCallExpr!! this is where the function declaration
+        // is identified and then the function object stored within the environment
+
+        // here is where all the information from function() in the parser is 
+        // converted into a LoxFunction object, with all the callee, param and
+        // body information
         LoxFunction function  = new LoxFunction(stmt);
         environment.define(stmt.name.lexeme, function);
         return null;
@@ -278,6 +320,7 @@ public class Interpreter implements Expr.Visitor<Object>,Stmt.Visitor<Void> {
         throw new RuntimeError(operator, "Operands must be numbers.");
     }
 
+    // the main method! for every statement that the parser returns, execute
     void interpret(List<Stmt> statements) {
         try {
             for (Stmt statement : statements) {
@@ -288,7 +331,7 @@ public class Interpreter implements Expr.Visitor<Object>,Stmt.Visitor<Void> {
         }
     }
 
-    // the method to activate the running of each statement
+    // the method to activate the running of each statement via triggering the visit methods
     // statement analogue to evaluate() for expressions
     private void execute(Stmt stmt) {
         stmt.accept(this);

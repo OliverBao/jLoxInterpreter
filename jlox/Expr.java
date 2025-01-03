@@ -48,6 +48,9 @@ abstract class Expr {
      * 4. then the interface operation runs, with the specific object, and 
      *    does the desired thing
      * 
+     * in the context of interpreting, it is the interpreter which implements the 
+     * actual interface methods
+     * 
      * in this way, the problem is solved: all the operation needs is the current state
      * of the object that it is going to be called on - and by passing itself, 
      * the subclass gives that required information
@@ -128,6 +131,9 @@ abstract class Expr {
         }
     }
 
+    // with the environment defined, whenever a variable is called it is enough
+    // to just know its name, since if it exists in the environment its value 
+    // will be returned
     static class Variable extends Expr {
         final Token name;
         Variable(Token name) {
@@ -139,8 +145,11 @@ abstract class Expr {
         }
     }
 
+    // here instead we need the value, since we are literally updating the 
+    // value in the environment hashmap
     static class Assign extends Expr {
-        // token needed to reference the LHS of the assignment
+        // token needed to reference the LHS of the assignment - having the token
+        // is more helpful than the lexeme itself?
         // to change the stored value
         final Token name;
         final Expr value;
@@ -154,7 +163,12 @@ abstract class Expr {
         }
     }
 
+    // implements the "or" and "and" operators. they are separated from the binary
+    // operators, both because they have different precedence but also because  
+    // they can affect control flow: for AND, if the left evaluates to false then
+    // the entire evaluation can stop, or for OR if the left is true then stop
     static class Logical extends Expr {
+        // otherwise the logical expression syntax is just the same as binary
         final Expr left;
         final Token operator;
         final Expr right;

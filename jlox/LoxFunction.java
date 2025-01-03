@@ -6,7 +6,10 @@ import jlox.Lox.LoxCallable;
 
 public class LoxFunction implements LoxCallable {
     private final Stmt.Function declaration;
-    LoxFunction(Stmt. Function delcaration) {
+
+    // the declaration contains all the information, the callee, which is the name
+    // of the method, the parameters, along with the body. this is the 
+    LoxFunction(Stmt.Function delcaration) {
         this.declaration = delcaration;
     }
 
@@ -22,6 +25,11 @@ public class LoxFunction implements LoxCallable {
         // which means that exploring different paths with the call stack
         // doesn't do the backtracking anymore.
         Environment environment = new Environment(interpreter.globals);
+
+        // but as presented the essence of this method of the function object
+        // lies in its arugments, the interpreter and the arguments that 
+        // are given. here every parameter is assigned the value of the respective
+        // arguments passed in
         for (int i = 0; i < declaration.params.size(); i++) {
             environment.define(declaration.params.get(i).lexeme, arguments.get(i));
         }
@@ -29,9 +37,11 @@ public class LoxFunction implements LoxCallable {
         // the execution of a function to where it was called, and just directly
         // out of it into the catch block to return the value. neat
         try {
+            // this executes the body of the function, in the context of the
+            // global environment with the parameters assigned to their argument values
             interpreter.executeBlock(declaration.body,environment);
         } catch (Return returnValue) {
-            return returnValue.value;
+            return returnValue.value; // using the throw error to catch the return case
         }
         return null;
     }
